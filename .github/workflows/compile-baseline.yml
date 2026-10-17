@@ -1,0 +1,39 @@
+name: Compile Pixel 8 Pro kernel (experimental)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install repo client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git curl python3
+          mkdir -p "$HOME/bin"
+          curl -fLsS https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Sync Google Pixel sources
+        run: |
+          mkdir -p "$RUNNER_TEMP/pixel-kernel"
+          cd "$RUNNER_TEMP/pixel-kernel"
+          repo init -u https://android.googlesource.com/kernel/manifest -b android-gs-shusky-6.1-android16 --depth=1
+          repo sync -c --no-tags -j4 --fail-fast
+      - name: Inspect source build entrypoints
+        run: |
+          cd "$RUNNER_TEMP/pixel-kernel"
+          find . -maxdepth 2 -name 'build_shusky.sh' -o -name 'build_husky.sh'
+          test -f build_shusky.sh || { echo 'STOP: build_shusky.sh missing; no build attempted'; exit 1; }
+      - name: Build unmodified kernel baseline
+        run: |
+          cd "$RUNNER_TEMP/pixel-kernel"
+          BUILD_AOSP_KERNEL=1 bash ./build_shusky.sh
+      - name: Explicitly refuse unpatched SUSFS output
+        run: |
+          echo "Baseline-only experiment: SukiSU Ultra and SUSFS have NOT been integrated."
+          echo "Do not flash artifacts from this run."
+          exit 1
