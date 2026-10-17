@@ -20,7 +20,7 @@ def resolve_ref(project, revision):
         ["git", "ls-remote", "--exit-code", url, ref],
         capture_output=True, text=True, timeout=45, check=True,
     )
-    rows = [line.split("\\t", 1) for line in proc.stdout.splitlines() if "\\t" in line]
+    rows = [line.split(None, 1) for line in proc.stdout.splitlines() if line.strip()]
     for sha, found_ref in rows:
         if found_ref == ref and len(sha) == 40:
             return sha
