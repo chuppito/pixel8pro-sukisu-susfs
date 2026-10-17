@@ -1,0 +1,18 @@
+name: Discover exact kernel sources
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Query official Google kernel refs
+        run: python3 scripts/discover_sources.py | tee source-discovery.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: husky-source-discovery
+          path: source-discovery.txt
+          retention-days: 14
