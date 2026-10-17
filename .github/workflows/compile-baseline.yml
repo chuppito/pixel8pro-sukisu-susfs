@@ -31,7 +31,7 @@ jobs:
       - name: Build unmodified kernel baseline
         run: |
           cd "$RUNNER_TEMP/pixel-kernel"
-          BUILD_AOSP_KERNEL=1 bash ./build_shusky.sh
+          tools/bazel run --kernel_package=@//aosp --//private/devices/google/common:download_prebuilt_gki_fips140=0 --config=stamp --config=shusky //private/devices/google/shusky:zuma_shusky_dist
       - name: Explicitly refuse unpatched SUSFS output
         run: |
           echo "Baseline-only experiment: SukiSU Ultra and SUSFS have NOT been integrated."
