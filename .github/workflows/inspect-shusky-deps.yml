@@ -1,0 +1,43 @@
+name: Inspect Shusky Bazel dependencies
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install repo
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fLsS https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Sync sources
+        run: |
+          mkdir -p "$RUNNER_TEMP/pixel-kernel"
+          cd "$RUNNER_TEMP/pixel-kernel"
+          repo init -u https://android.googlesource.com/kernel/manifest -b android-gs-shusky-6.1-android16 --depth=1
+          repo sync -c --no-tags -j4 --fail-fast
+      - name: Inspect Bazel dependency and local source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/pixel-kernel"
+          {
+            echo '=== ACTUAL SHUSKY FILES ==='
+            find private/devices/google/shusky -maxdepth 3 -type f | head -90
+            echo '=== FIPS AND GOOGLE INTERNAL URL REFERENCES ==='
+            grep -RInE 'fips140|androidbuildinternal|gki_prebuilt' --include='*.bzl' --include='BUILD*' --include='*.bazel' --include='*.json' private build common 2>/dev/null | head -120 || true
+            echo '=== BAZEL CONFIG FILES ==='
+            find . -maxdepth 3 \( -name '.bazelrc' -o -name 'MODULE.bazel' -o -name 'WORKSPACE*' \) | head -80
+            echo '=== TARGET QUERY (may require inaccessible Google prebuilt) ==='
+            tools/bazel query --config=shusky 'deps(//private/devices/google/shusky:zuma_shusky_dist)' --output=label 2>&1 | tail -110 || true
+          } | tee "$GITHUB_WORKSPACE/shusky-dependencies.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shusky-dependencies
+          path: shusky-dependencies.txt
+          retention-days: 14
