@@ -15,8 +15,11 @@ def fetch_json(url):
     return json.loads(body)
 
 def gitiles_refs(project, prefix):
-    url = f"https://android.googlesource.com/{project}/+refs/{prefix}?format=JSON"
-    return fetch_json(url)
+    url = f"https://android.googlesource.com/{project}/+refs?format=JSON"
+    data = fetch_json(url)
+    if not isinstance(data, dict):
+        raise ValueError("Gitiles refs response is not an object")
+    return {key: value for key, value in data.items() if key.startswith(prefix)}
 
 target = dict(line.strip().split("=", 1) for line in open("target.env", encoding="utf-8") if "=" in line and not line.startswith("#"))
 print("Target:", target["DEVICE"], target["BUILD_ID"], target["KMI"])
