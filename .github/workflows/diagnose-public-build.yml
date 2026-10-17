@@ -1,0 +1,43 @@
+name: Diagnose public kernel build dependencies
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install repo
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fLsS https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Sync public sources
+        run: |
+          mkdir -p "$RUNNER_TEMP/pixel-kernel"
+          cd "$RUNNER_TEMP/pixel-kernel"
+          repo init -u https://android.googlesource.com/kernel/manifest -b android-gs-shusky-6.1-android16 --depth=1
+          repo sync -c --no-tags -j4 --fail-fast
+      - name: Locate FIPS prebuilt dependency and public build targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/pixel-kernel"
+          {
+            echo '=== BUILD SCRIPT ==='
+            sed -n '1,180p' build_shusky.sh
+            echo '=== FIPS REFERENCES ==='
+            rg -n --glob '*.bzl' --glob '*.bazel' --glob 'BUILD*' --glob '*.sh' 'gki_prebuilt_fips140|kernel_aarch64_fips140|fips140.ko' . | head -120 || true
+            echo '=== KLEAF TARGETS ==='
+            rg -n 'kernel_aarch64_dist|zuma_shusky_dist|shusky.*dist' private/devices/google/shusky common/build.config* 2>/dev/null | head -100 || true
+            echo '=== PUBLIC BUILD SCRIPTS ==='
+            find . -maxdepth 3 -name 'build*.sh' | head -80
+          } | tee "$GITHUB_WORKSPACE/public-build-diagnostic.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: public-build-diagnostic
+          path: public-build-diagnostic.txt
+          retention-days: 14
