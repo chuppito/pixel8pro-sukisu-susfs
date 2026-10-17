@@ -1,0 +1,18 @@
+name: Audit shusky source revisions
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect shusky project revisions
+        run: python3 scripts/audit_shusky.py | tee shusky-audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shusky-source-audit
+          path: shusky-audit.txt
+          retention-days: 14
