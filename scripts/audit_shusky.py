@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Inspect candidate shusky kernel source metadata, read-only."""
 import base64
-import json
+import subprocess
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -13,9 +13,18 @@ def get(url, encoded=False):
     with urllib.request.urlopen(req, timeout=30) as resp:
         data = resp.read()
     return base64.b64decode(data, validate=True).decode("utf-8") if encoded else data.decode("utf-8")
-def gitiles_json(url):
-    text = get(url)
-    return json.loads(text.partition("\n")[2] if text.startswith(")]}'") else text)
+def resolve_ref(project, revision):
+    ref = "refs/heads/" + revision
+    url = BASE + project
+    proc = subprocess.run(
+        ["git", "ls-remote", "--exit-code", url, ref],
+        capture_output=True, text=True, timeout=45, check=True,
+    )
+    rows = [line.split("\\t", 1) for line in proc.stdout.splitlines() if "\\t" in line]
+    for sha, found_ref in rows:
+        if found_ref == ref and len(sha) == 40:
+            return sha
+    raise ValueError(f"No exact SHA found for {ref}; output: {proc.stdout[:300]!r}")
 
 manifest_url = f"{BASE}kernel/manifest/+/refs/heads/{BRANCH}/default.xml?format=TEXT"
 root = ET.fromstring(get(manifest_url, encoded=True))
@@ -33,10 +42,8 @@ for p in projects:
     if not revision:
         print(" No revision declared")
         continue
-    url = f"{BASE}{name}/+refs/heads/{revision}?format=JSON"
     try:
-        obj = gitiles_json(url)
-        print(" Branch head commit:", obj.get("value") or obj.get("commit") or obj.get("id") or "(not provided)")
+        print(" Branch head commit:", resolve_ref(name, revision))
     except Exception as exc:
         print(" Branch lookup unavailable:", type(exc).__name__, str(exc))
 print("\nDevice firmware: CP3A.261005.005")
