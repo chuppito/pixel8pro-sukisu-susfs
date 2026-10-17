@@ -5,7 +5,7 @@ import tempfile
 
 BRANCH = "android-gs-shusky-6.1-android16"
 HEAD = "8769cc47188c3bdca2a34d39ba0f39a945b85465"
-DEVICE_SHORT_SHA = "9dd05a3a1de"
+DEVICE_SHORT_SHA = "9dd05ae3a1de"
 URL = "https://android.googlesource.com/kernel/common"
 
 def run(*args, cwd=None, check=True):
