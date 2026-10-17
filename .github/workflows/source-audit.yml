@@ -1,0 +1,31 @@
+name: Source audit — husky
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate device and kernel family
+        shell: bash
+        run: |
+          set -euo pipefail
+          source target.env
+          test "$DEVICE" = husky
+          test "$ANDROID_VERSION" = 17
+          test "$BUILD_ID" = CP3A.261005.005
+          test "$KMI" = android14-6.1
+          echo "Validated metadata for $DEVICE $BUILD_ID"
+      - name: Query official Android kernel manifests (read only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/source_audit.py | tee source-audit.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: husky-source-audit
+          path: source-audit.txt
+          retention-days: 14
