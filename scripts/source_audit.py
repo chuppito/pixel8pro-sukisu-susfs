@@ -21,8 +21,8 @@ for name, url in URLS.items():
                 obj = json.loads(body)
                 print("  default_branch:", obj.get("default_branch"))
             elif name == "google_common_6_1":
-                obj = json.loads(body.removeprefix(")]}'\\n"))
-                print("  gitiles commit:", obj.get("commit"))
+                obj = json.loads(body.partition("\n")[2] if body.startswith(")]}'") else body)
+                print("  gitiles commit:", obj.get("commit") or obj.get("id") or "not exposed by this endpoint")
     except Exception as exc:
         print(f"{name}: unavailable: {type(exc).__name__}: {exc}")
 print("RESULT: exact husky firmware source commit is UNVERIFIED.")
