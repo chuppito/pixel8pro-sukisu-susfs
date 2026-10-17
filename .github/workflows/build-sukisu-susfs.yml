@@ -1,0 +1,57 @@
+name: Build SukiSU SUSFS GKI (experimental)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install repo tool
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -fLsS https://storage.googleapis.com/git-repo-downloads/repo -o "$HOME/bin/repo"
+          chmod +x "$HOME/bin/repo"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+      - name: Fetch Google sources
+        run: |
+          mkdir -p "$RUNNER_TEMP/kernel"
+          cd "$RUNNER_TEMP/kernel"
+          repo init -u https://android.googlesource.com/kernel/manifest -b android-gs-shusky-6.1-android16 --depth=1
+          repo sync -c --no-tags -j4 --fail-fast
+      - name: Integrate SukiSU builtin
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/kernel/aosp"
+          curl -fLsS https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh -o /tmp/sukisu-setup.sh
+          bash /tmp/sukisu-setup.sh builtin
+          test -e drivers/kernelsu
+      - name: Apply SUSFS patches
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/kernel"
+          git clone --depth=1 --branch gki-android14-6.1 https://github.com/simonpunk/susfs4ksu.git susfs4ksu
+          find susfs4ksu/kernel_patches -maxdepth 2 -type f | head -40
+          cd aosp
+          patch -p1 --forward --batch < ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch
+          cp ../susfs4ksu/kernel_patches/fs/* fs/
+          cp ../susfs4ksu/kernel_patches/include/linux/* include/linux/
+          cd drivers/kernelsu
+          patch -p1 --forward --batch < ../../../susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch
+      - name: Enable config and compile
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/kernel"
+          ./aosp/scripts/config --file aosp/arch/arm64/configs/gki_defconfig -e KSU -e KSU_SUSFS
+          tools/bazel build --config=stamp //aosp:kernel_aarch64_dist
+      - name: Upload experimental kernel outputs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sukisu-susfs-experimental-NOT-FLASH-VERIFIED
+          path: |
+            ${{ runner.temp }}/kernel/bazel-bin/aosp/kernel_aarch64_dist/**
+          if-no-files-found: error
+          retention-days: 14
