@@ -1,0 +1,31 @@
+name: Prepare kernel build inputs
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check target and source pins
+        shell: bash
+        run: |
+          set -euo pipefail
+          source target.env
+          test "$DEVICE" = husky
+          test "$KMI" = android14-6.1
+          echo "Device: $DEVICE"
+          echo "Firmware: $BUILD_ID"
+          echo "Kernel: $KERNEL_RELEASE"
+          echo "Candidate Google source: android-gs-shusky-6.1-android16"
+          echo "Source revisions: see docs/candidate-sources.md"
+          echo "STATUS: PREPARATION ONLY — firmware-specific source pin unverified"
+          echo "STATUS: NO BOOT IMAGE, NO FLASHABLE ARTIFACT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: husky-build-preparation
+          path: |
+            target.env
+            docs/candidate-sources.md
