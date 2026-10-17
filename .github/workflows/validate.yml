@@ -1,0 +1,28 @@
+name: Validate target metadata
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'target.env'
+      - '.github/workflows/validate.yml'
+  pull_request:
+    paths:
+      - 'target.env'
+      - '.github/workflows/validate.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate target metadata (no build or flashable image)
+        shell: bash
+        run: |
+          set -euo pipefail
+          source ./target.env
+          test "$DEVICE" = "husky"
+          test "$ANDROID_VERSION" = "17"
+          test "$BUILD_ID" = "CP3A.261005.005"
+          test "$KMI" = "android14-6.1"
+          echo "Target metadata validated. No kernel build configured."
