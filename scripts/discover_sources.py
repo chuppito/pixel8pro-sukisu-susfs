@@ -9,17 +9,17 @@ import urllib.request
 def fetch_json(url):
     req = urllib.request.Request(url, headers={"User-Agent": "husky-source-discovery/1.0"})
     with urllib.request.urlopen(req, timeout=25) as response:
-        body = response.read(2_000_000).decode("utf-8")
+        body = response.read().decode("utf-8")
     if body.startswith(")]}'"):
         body = body.partition("\n")[2]
     return json.loads(body)
 
 def gitiles_refs(project, prefix):
-    url = f"https://android.googlesource.com/{project}/+refs?format=JSON"
+    url = f"https://android.googlesource.com/{project}/+refs/{prefix}?format=JSON"
     data = fetch_json(url)
     if not isinstance(data, dict):
         raise ValueError("Gitiles refs response is not an object")
-    return {key: value for key, value in data.items() if key.startswith(prefix)}
+    return {key if key.startswith("refs/") else prefix.rstrip("/") + "/" + key: value for key, value in data.items()}
 
 target = dict(line.strip().split("=", 1) for line in open("target.env", encoding="utf-8") if "=" in line and not line.startswith("#"))
 print("Target:", target["DEVICE"], target["BUILD_ID"], target["KMI"])
@@ -27,7 +27,7 @@ print("Kernel release (device):", target["KERNEL_RELEASE"])
 print("Note: a branch head is NOT a build-specific source revision.")
 projects = [
     ("kernel/common", "refs/heads/android14-6.1"),
-    ("kernel/manifest", "refs/heads/"),
+    ("kernel/manifest", "refs/heads"),
 ]
 for project, prefix in projects:
     try:
