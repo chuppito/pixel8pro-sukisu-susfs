@@ -25,16 +25,23 @@ with tempfile.TemporaryDirectory() as directory:
     print("Fetched branch head:", actual_head, flush=True)
     if actual_head != HEAD:
         print("WARNING: branch moved since previous audit; results are not based on the recorded SHA.", flush=True)
-    try:
-        result = run("git", "fetch", "--depth=1", "--filter=blob:none", "origin", DEVICE_SHORT_SHA, cwd=directory)
-        resolved = run("git", "rev-parse", "FETCH_HEAD", cwd=directory).stdout.strip()
-        print("Device commit fetch: FOUND", resolved, flush=True)
-        if resolved == actual_head:
-            print("Exact branch head match: YES", flush=True)
-        else:
-            print("Exact branch head match: NO; ancestry not established.", flush=True)
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        print("Device commit fetch: NOT VERIFIED (server may reject abbreviated SHA fetch)", flush=True)
-        print("Details:", str(exc)[:300], flush=True)
+    print("Searching Git history for device commit (bounded deepening)...", flush=True)
+    found = False
+    for depth in (1000, 5000, 20000):
+        try:
+            run("git", "fetch", "--deepen=" + str(depth), "--filter=blob:none", "origin", "refs/heads/" + BRANCH, cwd=directory)
+            history = run("git", "rev-list", "FETCH_HEAD", cwd=directory).stdout.splitlines()
+            hits = [sha for sha in history if sha.startswith(DEVICE_SHORT_SHA)]
+            print("History commits scanned:", len(history), flush=True)
+            if hits:
+                print("Device commit in candidate branch history:", hits[0], flush=True)
+                found = True
+                break
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            print("History search interrupted:", type(exc).__name__, str(exc)[:250], flush=True)
+            break
+    if not found:
+        print("Device commit: NOT FOUND in scanned history; this is not proof of incompatibility.", flush=True)
+
 print("IMPORTANT: a matching commit alone does not establish full firmware or module compatibility.")
 print("No build or flashable image produced.")
