@@ -33,10 +33,10 @@ for p in projects:
     if not revision:
         print(" No revision declared")
         continue
-    url = f"{BASE}{name}/+/refs/heads/{revision}/?format=JSON"
+    url = f"{BASE}{name}/+refs/heads/{revision}?format=JSON"
     try:
         obj = gitiles_json(url)
-        print(" Branch head commit:", obj.get("commit", "(not provided)"))
+        print(" Branch head commit:", obj.get("value") or obj.get("commit") or obj.get("id") or "(not provided)")
     except Exception as exc:
         print(" Branch lookup unavailable:", type(exc).__name__, str(exc))
 print("\nDevice firmware: CP3A.261005.005")
