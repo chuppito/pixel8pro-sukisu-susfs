@@ -32,8 +32,9 @@ jobs:
         run: |
           set -euo pipefail
           cd "$RUNNER_TEMP/kernel"
-          git clone --depth=1 https://github.com/ShirkNeko/susfs4ksu.git susfs4ksu
+          git clone --depth=1 --branch gki-android14-6.1 https://gitlab.com/simonpunk/susfs4ksu.git susfs4ksu
           find susfs4ksu/kernel_patches -maxdepth 2 -type f | head -40
+          test -f susfs4ksu/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch
           cd aosp
           test -f ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch || { echo "Required SUSFS patch missing in selected fork"; exit 1; }
           patch -p1 --forward --batch < ../susfs4ksu/kernel_patches/50_add_susfs_in_gki-android14-6.1.patch
