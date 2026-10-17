@@ -28,10 +28,10 @@ jobs:
           cd "$RUNNER_TEMP/pixel-kernel"
           find . -maxdepth 2 -name 'build_shusky.sh' -o -name 'build_husky.sh'
           test -f build_shusky.sh || { echo 'STOP: build_shusky.sh missing; no build attempted'; exit 1; }
-      - name: Build unmodified kernel baseline
+      - name: Build public AOSP kernel baseline
         run: |
           cd "$RUNNER_TEMP/pixel-kernel"
-          tools/bazel run --kernel_package=@//aosp --//private/devices/google/common:download_prebuilt_gki_fips140=0 --config=stamp --config=shusky //private/devices/google/shusky:zuma_shusky_dist
+          tools/bazel build --config=stamp //aosp:kernel_aarch64_dist
       - name: Explicitly refuse unpatched SUSFS output
         run: |
           echo "Baseline-only experiment: SukiSU Ultra and SUSFS have NOT been integrated."
