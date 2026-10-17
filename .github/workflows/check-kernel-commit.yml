@@ -1,0 +1,18 @@
+name: Check device kernel commit
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compare kernel commit against Google sources
+        run: python3 scripts/check_kernel_commit.py | tee kernel-commit-check.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: husky-kernel-commit-check
+          path: kernel-commit-check.txt
+          retention-days: 14
